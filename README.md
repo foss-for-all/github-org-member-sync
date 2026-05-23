@@ -27,12 +27,15 @@ dagger call list-keycloak-users-by-linked-provider \
   --auth-realm platform-admin \
   --id-provider github \
   --client-id ci-admin \
-  --client-secret env:KEYCLOAK_CLIENT_SECRET
+  --client-secret env:KEYCLOAK_CLIENT_SECRET \
+  users
 ```
 
-Each result includes the Keycloak user ID, username, email, enabled status, federated user ID, and federated username.
+Each user result includes the Keycloak user ID, username, email, enabled status, federated user ID, and federated username.
 
 The confidential client used for authentication must be allowed to obtain a token from `authRealm` and must have permission to read users in the target `realm`.
+
+The result is chainable in Dagger shell through the returned `KeycloakLinkedUsers` object.
 
 ### Invite linked users to a GitHub team
 
@@ -75,3 +78,45 @@ dagger call invite-keycloak-users-to-github-org-team \
 Each result includes the Keycloak user ID, Keycloak username, GitHub username, status, membership state, role, and message.
 
 `githubTeamSlug` is the team slug, not the display name. The GitHub token must be able to read the team membership and manage organization/team membership.
+
+### Chain in Dagger shell
+
+Use the listing result directly as the invite input in Dagger shell:
+
+```bash
+dagger shell
+```
+
+```shell
+list-keycloak-users-by-linked-provider \
+  --keycloak-base-url https://sso.example.com \
+  --realm fossforall \
+  --auth-realm platform-admin \
+  --id-provider github \
+  --client-id ci-admin \
+  --client-secret env:KEYCLOAK_CLIENT_SECRET \
+  | invite-to-github-org-team \
+    --github-org fossforall \
+    --github-team-slug contributors \
+    --github-token env:GITHUB_TOKEN \
+    --dry-run true
+```
+
+You can omit `--auth-realm` when the confidential client lives in the same realm being queried.
+
+The same chain can be run without entering Dagger shell:
+
+```bash
+dagger call list-keycloak-users-by-linked-provider \
+  --keycloak-base-url https://sso.example.com \
+  --realm fossforall \
+  --auth-realm platform-admin \
+  --id-provider github \
+  --client-id ci-admin \
+  --client-secret env:KEYCLOAK_CLIENT_SECRET \
+  invite-to-github-org-team \
+    --github-org fossforall \
+    --github-team-slug contributors \
+    --github-token env:GITHUB_TOKEN \
+    --dry-run true
+```

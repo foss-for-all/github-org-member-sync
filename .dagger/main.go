@@ -26,6 +26,10 @@ type KeycloakLinkedUser struct {
 	FederatedUsername string
 }
 
+type KeycloakLinkedUsers struct {
+	Users []KeycloakLinkedUser
+}
+
 type GithubTeamInviteResult struct {
 	KeycloakUserID   string
 	KeycloakUsername string
@@ -71,12 +75,12 @@ func (m *GithubOrgMemberSync) ListKeycloakUsersByLinkedProvider(
 	ctx context.Context,
 	keycloakBaseURL string,
 	realm string,
-	authRealm string,
+	authRealm *string,
 	idProvider string,
 	clientId string,
 	clientSecret *dagger.Secret,
-	pageSize int,
-) ([]KeycloakLinkedUser, error) {
+	pageSize *int,
+) (*KeycloakLinkedUsers, error) {
 	if keycloakBaseURL == "" {
 		return nil, fmt.Errorf("keycloakBaseURL is required")
 	}
@@ -92,11 +96,13 @@ func (m *GithubOrgMemberSync) ListKeycloakUsersByLinkedProvider(
 	if clientSecret == nil {
 		return nil, fmt.Errorf("clientSecret is required")
 	}
-	if authRealm == "" {
-		authRealm = realm
+	authRealmValue := realm
+	if authRealm != nil && *authRealm != "" {
+		authRealmValue = *authRealm
 	}
-	if pageSize <= 0 {
-		pageSize = 100
+	perPage := 100
+	if pageSize != nil && *pageSize > 0 {
+		perPage = *pageSize
 	}
 
 	secretValue, err := clientSecret.Plaintext(ctx)
@@ -105,7 +111,7 @@ func (m *GithubOrgMemberSync) ListKeycloakUsersByLinkedProvider(
 	}
 
 	httpClient := &http.Client{Timeout: 30 * time.Second}
-	token, err := getAccessToken(ctx, httpClient, keycloakBaseURL, authRealm, clientId, secretValue)
+	token, err := getAccessToken(ctx, httpClient, keycloakBaseURL, authRealmValue, clientId, secretValue)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +119,7 @@ func (m *GithubOrgMemberSync) ListKeycloakUsersByLinkedProvider(
 	var results []KeycloakLinkedUser
 	first := 0
 	for {
-		users, err := getUsersPage(ctx, httpClient, keycloakBaseURL, realm, token, first, pageSize)
+		users, err := getUsersPage(ctx, httpClient, keycloakBaseURL, realm, token, first, perPage)
 		if err != nil {
 			return nil, err
 		}
@@ -141,13 +147,31 @@ func (m *GithubOrgMemberSync) ListKeycloakUsersByLinkedProvider(
 			}
 		}
 
-		if len(users) < pageSize {
+		if len(users) < perPage {
 			break
 		}
 		first += len(users)
 	}
 
-	return results, nil
+	return &KeycloakLinkedUsers{Users: results}, nil
+}
+
+// Invite these linked users to a GitHub organization team.
+func (users *KeycloakLinkedUsers) InviteToGithubOrgTeam(
+	ctx context.Context,
+	githubOrg string,
+	githubTeamSlug string,
+	githubToken *dagger.Secret,
+	role *string,
+	githubBaseURL *string,
+	pageSize *int,
+	dryRun *bool,
+) ([]GithubTeamInviteResult, error) {
+	if users == nil {
+		return nil, fmt.Errorf("users is required")
+	}
+
+	return inviteKeycloakUsersToGithubOrgTeam(ctx, users.Users, githubOrg, githubTeamSlug, githubToken, role, githubBaseURL, pageSize, dryRun)
 }
 
 // Invite linked Keycloak users to a GitHub organization team.
@@ -172,6 +196,24 @@ func (m *GithubOrgMemberSync) InviteKeycloakUsersToGithubOrgTeam(
 	}
 	if len(users) == 0 {
 		return nil, fmt.Errorf("usersJson must contain at least one user")
+	}
+
+	return inviteKeycloakUsersToGithubOrgTeam(ctx, users, githubOrg, githubTeamSlug, githubToken, role, githubBaseURL, pageSize, dryRun)
+}
+
+func inviteKeycloakUsersToGithubOrgTeam(
+	ctx context.Context,
+	users []KeycloakLinkedUser,
+	githubOrg string,
+	githubTeamSlug string,
+	githubToken *dagger.Secret,
+	role *string,
+	githubBaseURL *string,
+	pageSize *int,
+	dryRun *bool,
+) ([]GithubTeamInviteResult, error) {
+	if len(users) == 0 {
+		return nil, fmt.Errorf("users is required")
 	}
 	if githubOrg == "" {
 		return nil, fmt.Errorf("githubOrg is required")
