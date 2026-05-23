@@ -3,35 +3,63 @@ Sync FOSS for All members from Keycloak to GitHub Organization
 
 ## Tasks
 
-### List Keycloak users by linked provider
+### List Keycloak users
 
-Lists users in a target realm that have a linked social login for a specific identity provider alias such as `github`.
+Lists users in a target realm. Optional filters can limit results to users with a linked social login provider, group association, or assigned realm role.
 
 Required inputs:
 - `keycloakBaseURL`
 - `realm`
-- `idProvider`
 - `clientId`
 - `clientSecret`
 
 Optional inputs:
 - `authRealm`: defaults to `realm` when omitted
+- `linkedProvider`: filters users by identity provider alias, such as `github`
+- `group`: filters users by group name or full group path, such as `contributors` or `/contributors`
+- `realmRole`: filters users by effective realm role name
 - `pageSize`: defaults to `100` when omitted or set to `0`
 
-Example:
+Linked provider example:
 
 ```bash
-dagger call list-keycloak-users-by-linked-provider \
+dagger call list-keycloak-users \
   --keycloak-base-url https://sso.example.com \
   --realm fossforall \
   --auth-realm platform-admin \
-  --id-provider github \
+  --linked-provider github \
+  --client-id ci-admin \
+  --client-secret env:KEYCLOAK_CLIENT_SECRET \
+  users
+```
+
+Group example:
+
+```bash
+dagger call list-keycloak-users \
+  --keycloak-base-url https://sso.example.com \
+  --realm fossforall \
+  --group /contributors \
+  --client-id ci-admin \
+  --client-secret env:KEYCLOAK_CLIENT_SECRET \
+  users
+```
+
+Realm role example:
+
+```bash
+dagger call list-keycloak-users \
+  --keycloak-base-url https://sso.example.com \
+  --realm fossforall \
+  --realm-role community-member \
   --client-id ci-admin \
   --client-secret env:KEYCLOAK_CLIENT_SECRET \
   users
 ```
 
 Each user result includes the Keycloak user ID, username, email, enabled status, federated user ID, and federated username.
+
+Federated fields are populated when `linkedProvider` is used and the user matches that provider.
 
 The confidential client used for authentication must be allowed to obtain a token from `authRealm` and must have permission to read users in the target `realm`.
 
@@ -88,11 +116,11 @@ dagger shell
 ```
 
 ```shell
-list-keycloak-users-by-linked-provider \
+list-keycloak-users \
   --keycloak-base-url https://sso.example.com \
   --realm fossforall \
   --auth-realm platform-admin \
-  --id-provider github \
+  --linked-provider github \
   --client-id ci-admin \
   --client-secret env:KEYCLOAK_CLIENT_SECRET \
   | invite-to-github-org-team \
@@ -107,11 +135,11 @@ You can omit `--auth-realm` when the confidential client lives in the same realm
 The same chain can be run without entering Dagger shell:
 
 ```bash
-dagger call list-keycloak-users-by-linked-provider \
+dagger call list-keycloak-users \
   --keycloak-base-url https://sso.example.com \
   --realm fossforall \
   --auth-realm platform-admin \
-  --id-provider github \
+  --linked-provider github \
   --client-id ci-admin \
   --client-secret env:KEYCLOAK_CLIENT_SECRET \
   invite-to-github-org-team \
