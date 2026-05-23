@@ -26,10 +26,52 @@ dagger call list-keycloak-users-by-linked-provider \
   --realm fossforall \
   --auth-realm platform-admin \
   --id-provider github \
-  --client-i-d ci-admin \
+  --client-id ci-admin \
   --client-secret env:KEYCLOAK_CLIENT_SECRET
 ```
 
 Each result includes the Keycloak user ID, username, email, enabled status, federated user ID, and federated username.
 
 The confidential client used for authentication must be allowed to obtain a token from `authRealm` and must have permission to read users in the target `realm`.
+
+### Invite linked users to a GitHub team
+
+Invites Keycloak-linked users to a GitHub organization team using their federated username as the GitHub login. Existing active team members and users with pending team invitations are skipped.
+
+Required inputs:
+- `usersJson`
+- `githubOrg`
+- `githubTeamSlug`
+- `githubToken`
+
+Optional inputs:
+- `role`: defaults to `member`; must be `member` or `maintainer`
+- `githubBaseURL`: defaults to `https://api.github.com`
+- `pageSize`: defaults to `100` and is capped at `100`
+- `dryRun`: defaults to `false`
+
+Dry-run example:
+
+```bash
+dagger call invite-keycloak-users-to-github-org-team \
+  --users-json '[{"userId":"keycloak-user-id","username":"keycloak-user","email":"user@example.com","enabled":true,"federatedUserID":"12345","federatedUsername":"github-login"}]' \
+  --github-org fossforall \
+  --github-team-slug contributors \
+  --github-token env:GITHUB_TOKEN \
+  --dry-run true
+```
+
+Live invitation example:
+
+```bash
+dagger call invite-keycloak-users-to-github-org-team \
+  --users-json '[{"userId":"keycloak-user-id","username":"keycloak-user","email":"user@example.com","enabled":true,"federatedUserID":"12345","federatedUsername":"github-login"}]' \
+  --github-org fossforall \
+  --github-team-slug contributors \
+  --github-token env:GITHUB_TOKEN \
+  --role member
+```
+
+Each result includes the Keycloak user ID, Keycloak username, GitHub username, status, membership state, role, and message.
+
+`githubTeamSlug` is the team slug, not the display name. The GitHub token must be able to read the team membership and manage organization/team membership.
