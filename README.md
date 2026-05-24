@@ -3,6 +3,46 @@ Sync FOSS for All members from Keycloak to GitHub Organization
 
 ## Tasks
 
+### Userspace Tailscale service
+
+Creates a userspace Tailscale sidecar service that other container-based functions can bind to. The service exposes a SOCKS5 proxy at `tailscale:1055`; attached containers receive `ALL_PROXY`, `HTTP_PROXY`, and `HTTPS_PROXY` variables pointing at that proxy.
+
+Required inputs:
+- `authKey`
+
+Optional inputs:
+- `hostname`: defaults to `github-org-member-sync`
+
+Create the service:
+
+```bash
+dagger call userspace-tailscale \
+  --auth-key env:TS_AUTHKEY \
+  --hostname github-org-member-sync
+```
+
+Future functions that need Tailnet access can be added as methods on the returned object, which makes calls chainable:
+
+```bash
+dagger call userspace-tailscale \
+  --auth-key env:TS_AUTHKEY \
+  --hostname github-org-member-sync \
+  some-tailnet-function \
+    --url https://internal-service.tailnet.example
+```
+
+Container-based functions can also accept a `*UserspaceTailscale` value and attach it before running commands:
+
+```go
+ctr := dag.Container().From("alpine:latest")
+if tailscale != nil {
+	ctr, err = tailscale.WithContainer(ctr)
+	if err != nil {
+		return nil, err
+	}
+}
+```
+
 ### List Keycloak users
 
 Lists users in a target realm. Optional filters can limit results to users with a linked social login provider, group association, or assigned realm role.
