@@ -32,12 +32,12 @@ jobs:
 
       - name: Invite missing GitHub team members
         env:
-          KC_HOST: ${{ secrets.KC_HOST }}
+          KC_HOST: ${{ secrets.KC_ENDPOINT }}
           KEYCLOAK_CLIENT_SECRET: ${{ secrets.KEYCLOAK_CLIENT_SECRET }}
           MEMBER_SYNC_GITHUB_TOKEN: ${{ secrets.MEMBER_SYNC_GITHUB_TOKEN }}
         run: |
           uv run member-sync \
-            --keycloak-base-url "https://${KC_HOST}:8088" \
+            --keycloak-base-url ${KC_HOST} \
             --realm fossforall \
             --client-id github-org-agent \
             --client-secret env:KEYCLOAK_CLIENT_SECRET \
