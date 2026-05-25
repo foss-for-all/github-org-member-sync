@@ -1,0 +1,50 @@
+name: Invite missing members
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0,12 * * *"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  invite-missing:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          audience: ${{ secrets.TS_AUDIENCE }}
+          tags: tag:ci
+          ping: ${{ secrets.KC_HOST }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Invite missing GitHub team members
+        env:
+          KC_HOST: ${{ secrets.KC_HOST }}
+          KEYCLOAK_CLIENT_SECRET: ${{ secrets.KEYCLOAK_CLIENT_SECRET }}
+          MEMBER_SYNC_GITHUB_TOKEN: ${{ secrets.MEMBER_SYNC_GITHUB_TOKEN }}
+        run: |
+          uv run member-sync \
+            --keycloak-base-url "https://${KC_HOST}:8088" \
+            --realm fossforall \
+            --client-id github-org-agent \
+            --client-secret env:KEYCLOAK_CLIENT_SECRET \
+            --linked-provider github \
+            --group /members \
+            --github-org foss-for-all \
+            --github-team-slug full-members \
+            --github-token env:MEMBER_SYNC_GITHUB_TOKEN \
+            --invite-missing \
+            --no-dry-run
