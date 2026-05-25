@@ -118,11 +118,11 @@ Preview missing invitations:
 member-sync \
   --keycloak-base-url https://sso.example.com \
   --realm fossforall \
-  --client-id ci-admin \
+  --client-id github-org-agent \
   --client-secret env:KEYCLOAK_CLIENT_SECRET \
   --linked-provider github \
   --github-org fossforall \
-  --github-team-slug contributors \
+  --github-team-slug full-members \
   --github-token env:GITHUB_TOKEN \
   --invite-missing
 ```
@@ -189,6 +189,7 @@ Sync mode prints a JSON object:
 ```json
 {
   "dryRun": true,
+  "keycloakGithubUsers": ["existing-login", "new-login", "pending-login"],
   "githubTeamInvitations": ["pending-login"],
   "githubTeamMembers": ["existing-login"],
   "inviteResults": [
@@ -199,10 +200,18 @@ Sync mode prints a JSON object:
   ],
   "keycloakUsers": [],
   "removeResults": [],
+  "skippedExistingMembers": ["existing-login"],
+  "skippedPendingInvitations": ["pending-login"],
   "toInvite": ["new-login"],
   "toRemove": []
 }
 ```
+
+The diagnostic fields help explain why `toInvite` is empty:
+
+- `keycloakGithubUsers`: GitHub usernames derived from matched Keycloak federated identities.
+- `skippedExistingMembers`: Keycloak-derived usernames already active in the GitHub team.
+- `skippedPendingInvitations`: Keycloak-derived usernames already pending invitation to the GitHub team.
 
 ## API Behavior
 

@@ -84,3 +84,13 @@ def diff_team_members(
     to_invite = [username for username in keycloak_github_users if username.lower() not in existing_or_pending]
     to_remove = [username for username in github_members if username.lower() not in keycloak_github_users_set]
     return to_invite, to_remove
+
+
+def skipped_existing_members(keycloak_github_users: list[str], github_members: list[str]) -> list[str]:
+    github_members_set = {username.lower() for username in github_members}
+    return [username for username in keycloak_github_users if username.lower() in github_members_set]
+
+
+def skipped_pending_invitations(keycloak_github_users: list[str], github_invitations: list[str]) -> list[str]:
+    github_invitations_set = {username.lower() for username in github_invitations}
+    return [username for username in keycloak_github_users if username.lower() in github_invitations_set]

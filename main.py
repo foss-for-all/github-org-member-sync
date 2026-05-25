@@ -14,6 +14,8 @@ from github import (
     list_github_team_invitations,
     list_github_team_members,
     remove_github_user,
+    skipped_existing_members,
+    skipped_pending_invitations,
 )
 from keycloak import list_keycloak_users
 
@@ -86,6 +88,8 @@ def cli(
             user["federatedUsername"] for user in keycloak_users if user.get("federatedUsername")
         )
         to_invite, to_remove = diff_team_members(keycloak_github_users, github_members, github_invitations)
+        existing_members = skipped_existing_members(keycloak_github_users, github_members)
+        pending_invitations = skipped_pending_invitations(keycloak_github_users, github_invitations)
 
         invite_results = sync_invitations(
             enabled=invite_missing,
@@ -110,8 +114,11 @@ def cli(
         output = {
             "dryRun": dry_run,
             "keycloakUsers": keycloak_users,
+            "keycloakGithubUsers": keycloak_github_users,
             "githubTeamMembers": github_members,
             "githubTeamInvitations": github_invitations,
+            "skippedExistingMembers": existing_members,
+            "skippedPendingInvitations": pending_invitations,
             "toInvite": to_invite if invite_missing else [],
             "toRemove": to_remove if remove_extra else [],
             "inviteResults": invite_results,
