@@ -19,8 +19,7 @@ jobs:
       - name: Set up Tailscale
         uses: tailscale/github-action@v4
         with:
-          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          audience: ${{ secrets.TS_AUDIENCE }}
+          authkey: ${{ secrets.TS_AUTHKEY }}
           tags: tag:ci
           args: --accept-dns=true
 
